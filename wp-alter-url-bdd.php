@@ -1,6 +1,7 @@
 <?php
-$old_url = ''; // Old url
-$new_url = ''; // New url
+$old_url = ''; // Old url (no http)
+$new_url = ''; // New url (no http)
+$db_prefix = ''; // Db prefix
 
 /**
  * MySQL settings
@@ -21,7 +22,12 @@ define('DB_HOST', '127.0.0.1');
  * @return bool
  */
 function table_exists($tbl) {
-	global $db;
+	global $db, $db_prefix;
+
+	// Check for custom table prefix
+	if($db_prefix != 'wp_' && strpos($tbl, 'wp_') === 0) {
+		$tbl = preg_replace('/^wp_/', $db_prefix, $tbl);
+	}
 	$return = true;
 	$sql = "SHOW TABLES LIKE '{$tbl}'";
 	$result = $db->query($sql);
@@ -30,6 +36,7 @@ function table_exists($tbl) {
 	}
 	return $return;
 }
+
 /**
  * Update the table with new data
  *
@@ -41,7 +48,8 @@ function table_exists($tbl) {
  * @return void
  */
 function maj_table($field_id, $field_value, $tbl, $cond = null, $add_http = null){
-	global $db, $old_url, $new_url;
+	global $db, $old_url, $new_url, $db_prefix;
+
 	if($cond) {
 		$cond = ' '.$cond;
 	}
@@ -49,7 +57,11 @@ function maj_table($field_id, $field_value, $tbl, $cond = null, $add_http = null
 	if($add_http) {
 		$prefix = 'http://';
 	}
-	// Récupérer les données
+	// Check for custom table prefix
+	if($db_prefix != 'wp_' && strpos($tbl, 'wp_') === 0) {
+		$tbl = preg_replace('/^wp_/', $db_prefix, $tbl);
+	}
+	// Get data
 	$sql = "SELECT {$field_id},{$field_value} FROM {$tbl}".$cond;
 	$stmt = $db->prepare($sql);
 	$stmt->execute();
@@ -76,6 +88,12 @@ function maj_table($field_id, $field_value, $tbl, $cond = null, $add_http = null
 	}
 	echo $a. ' lines updated in <i>' . $tbl . '</i><br />';
 }
+
+/* Check script is configured */
+if(empty($db_prefix) OR empty($old_url) OR empty($new_url)) {
+	die('Please configure this script before running it.');
+}
+
 /* Use PDO */
 $host = 'mysql:host='. DB_HOST.';dbname='.DB_NAME;
 try
