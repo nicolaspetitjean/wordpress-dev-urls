@@ -95,7 +95,7 @@ if(empty($db_prefix) OR empty($old_url) OR empty($new_url)) {
 }
 
 /* Use PDO */
-$host = 'mysql:host='. DB_HOST.';dbname='.DB_NAME;
+$host = 'mysql:host='. DB_HOST.';dbname='.DB_NAME.';charset=utf8';
 try
 {
 	$db = new PDO($host, DB_USER, DB_PASSWORD);
