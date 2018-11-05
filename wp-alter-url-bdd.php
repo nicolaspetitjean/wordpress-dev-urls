@@ -91,7 +91,6 @@ function maj_table($field_id, $field_value, $tbl, $cond = null, $add_http = null
         if($stmt->execute($array)) {
             $a++;
         }
-        $a++;
     }
     echo "$a lines updated in $tbl\n";
 }
