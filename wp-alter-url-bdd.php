@@ -1,7 +1,9 @@
+#!/usr/bin/env php
 <?php
 $old_url = ''; // Old url (no http)
 $new_url = ''; // New url (no http)
 $db_prefix = ''; // Db prefix
+$enable_ssl = true;
 
 /**
  * MySQL settings
@@ -47,51 +49,56 @@ function table_exists($tbl) {
  * @param null $add_http
  * @return void
  */
-function maj_table($field_id, $field_value, $tbl, $cond = null, $add_http = null){
-	global $db, $old_url, $new_url, $db_prefix;
+function maj_table($field_id, $field_value, $tbl, $cond = null, $add_http = null)
+{
+    global $db, $old_url, $new_url, $db_prefix, $enable_ssl;
 
-	if($cond) {
-		$cond = ' '.$cond;
-	}
-	$prefix = '';
-	if($add_http) {
-		$prefix = 'http://';
-	}
-	// Check for custom table prefix
-	if($db_prefix != 'wp_' && strpos($tbl, 'wp_') === 0) {
-		$tbl = preg_replace('/^wp_/', $db_prefix, $tbl);
-	}
-	// Get data
-	$sql = "SELECT {$field_id},{$field_value} FROM {$tbl}".$cond;
-	$stmt = $db->prepare($sql);
-	$stmt->execute();
-	$newmeta = array();
-	while($post = $stmt->fetch(PDO::FETCH_ASSOC))
-	{
-		$newmeta[$post[$field_id]] = str_replace($prefix.$old_url, $prefix.$new_url, $post[$field_value]);
-	}
-	if(empty($newmeta)) {
-		return false;
-	}
-	$sql = "UPDATE {$tbl} SET {$field_value}=? WHERE {$field_id}=?";
-	$stmt = $db->prepare($sql);
-	$a = 0;
-	foreach($newmeta as $k => $v)
-	{
-		$array[0] = $v;
-		$array[1] = $k;
-		if($stmt->execute($array))
-		{
-			$a++;
-		}
-		$a++;
-	}
-	echo $a. ' lines updated in <i>' . $tbl . '</i><br />';
+    if($cond) {
+        $cond = ' ' . $cond;
+    }
+    $prefix = '';
+    if($add_http) {
+        $prefix = 'http://';
+    }
+    // Check for custom table prefix
+    if($db_prefix != 'wp_' && strpos($tbl, 'wp_') === 0) {
+        $tbl = preg_replace('/^wp_/', $db_prefix, $tbl);
+    }
+    // Get data
+    $sql = "SELECT {$field_id},{$field_value} FROM {$tbl}" . $cond;
+    $stmt = $db->prepare($sql);
+    $stmt->execute();
+    $newmeta = array();
+    while($post = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $newmeta[$post[$field_id]] = str_replace($prefix . $old_url, $prefix . $new_url, $post[$field_value]);
+        if($enable_ssl) {
+            //$replace = preg_replace('/http(?!s)/', 'https', $newmeta[$post[$field_id]]);
+            $replace = str_replace('http://', 'https://', $newmeta[$post[$field_id]]);
+        } else {
+            $replace = str_replace('https://', 'http://', $newmeta[$post[$field_id]]);
+        }
+        $newmeta[$post[$field_id]] = $replace;
+    }
+    if(empty($newmeta)) {
+        return false;
+    }
+    $sql = "UPDATE {$tbl} SET {$field_value}=? WHERE {$field_id}=?";
+    $stmt = $db->prepare($sql);
+    $a = 0;
+    foreach($newmeta as $k => $v) {
+        $array[0] = $v;
+        $array[1] = $k;
+        if($stmt->execute($array)) {
+            $a++;
+        }
+        $a++;
+    }
+    echo "$a lines updated in $tbl\n";
 }
 
 /* Check script is configured */
 if(empty($db_prefix) OR empty($old_url) OR empty($new_url)) {
-	die('Please configure this script before running it.');
+	die("Please configure this script before running it.\n");
 }
 
 /* Use PDO */
@@ -103,9 +110,7 @@ try
 }
 catch(PDOException $e)
 {
-	$json = array('success' => false, 'error' => 'Unable to connect to the database.');
-	echo json_encode($json);
-	die();
+    die("Unable to connect to the database.\n");
 }
 /* Table : wp_posts */
 if(table_exists('wp_posts')) {
